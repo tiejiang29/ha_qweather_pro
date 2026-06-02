@@ -1,3 +1,7 @@
+<div align="right">
+  <a href="./README_EN.md">English Version</a> | <strong>中文版</strong>
+</div>
+
 # <img src="custom_components/qweather_pro/brand/icon.png" width="64"> 和风天气Pro (QWeather Pro)
 
 [![Release](https://img.shields.io/github/v/release/hzonz/ha_qweather_pro)](https://github.com/hzonz/ha_qweather_pro/releases)

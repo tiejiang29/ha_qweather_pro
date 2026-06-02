@@ -35,7 +35,7 @@ Rebuilt using the latest 2026 development standards, delivering not only highly 
 
 ## 🌍 Internationalization & Multi-language Support (i18n)
 
-QWeather Pro 2026 is now fully internationalized, providing a seamless localized experience for users worldwide.
+QWeather Pro  internationalized, providing a seamless localized experience for users worldwide.
 
 - **Automatic Language Sync**: The integration automatically detects your Home Assistant system language (Settings -> System -> General) and requests weather data in the matching language (supporting 30+ languages).
 - **Smart Fallback Mechanism**:

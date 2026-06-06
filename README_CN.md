@@ -88,4 +88,4 @@ https://github.com/hzonz/ha_qweather_pro
 如果这个项目对您有帮助，请给项目点个Star ⭐！
 
 ---
-**兼容版本**: Home Assistant 2024.5+
+**兼容版本**: Home Assistant 2026.3+

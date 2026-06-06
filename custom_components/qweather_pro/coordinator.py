@@ -392,6 +392,7 @@ class QWeatherUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _parse_indices(self, data: list) -> list:
         return [{
             "type": SUGGESTION_TYPE_MAP.get(d.get("type"), "unknown"),
+            "date": d.get("date", ""),
             "title": d.get("name"),
             "title_cn": d.get("name"),
             "brf": d.get("category"),

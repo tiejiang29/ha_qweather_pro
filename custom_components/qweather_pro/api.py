@@ -170,7 +170,7 @@ class QWeatherAPI:
     # ---辅助数据 ---
     async def get_indices(self, lat: str, lon: str, lang: str):
         """获取生活指数."""
-        return await self.request("v7", "indices/1d", {"location": f"{lon},{lat}", "type": "0", "lang": lang})
+        return await self.request("v7", "indices/3d", {"location": f"{lon},{lat}", "type": "0", "lang": lang})
 
     async def get_minutely(self, lat: str, lon: str, lang: str):
         """获取分钟级降水."""

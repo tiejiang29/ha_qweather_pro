@@ -102,4 +102,4 @@ If this project helps you, please consider giving it a ⭐!
 
 ---
 
-**Compatible Version:** Home Assistant 2024.5+
+**Compatible Version:** Home Assistant 2026.3+

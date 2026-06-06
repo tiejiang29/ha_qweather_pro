@@ -1,5 +1,6 @@
 /**
  * QWeather Dashboard Card - Pro (2026.6 Enhanced)
+ * Supports mode: weather | detail | lifeindex
  */
 (async () => {
   const whenDefined = (t) => customElements.whenDefined(t);
@@ -9,6 +10,7 @@
   const html = Lit.prototype.html;
   const css = Lit.prototype.css;
   const I18N = window.QW_I18N;
+  const stripUnit = (v) => (v || "").toString().replace(/[^\d.-]/g, "");
 
   class QWeatherCard extends Lit {
     static get properties() {
@@ -40,7 +42,11 @@
       return obj;
     }
 
-    setConfig(c) { this.config = { ...c }; }
+    setConfig(c) {
+      this.config = { ...c };
+      // mode: weather (default) | detail | lifeindex
+      if (!this.config.mode) this.config.mode = "weather";
+    }
 
     set hass(hass) {
       this._hass = hass;
@@ -162,15 +168,15 @@
         </div>`;
     }
 
-    render(){
-      if(!this._weather) return html`<ha-card class="loading">${this._t("loading")}</ha-card>`;
-      const a=this._weather.attributes;
-      const isDaily=this._selectedTab==="daily";
-      const fc=isDaily?this._forecastDaily:this._forecastHourly;
+    /* ============ weather mode (default) ============ */
+    _renderWeatherMode() {
+      const a = this._weather.attributes;
+      const isDaily = this._selectedTab === "daily";
+      const fc = isDaily ? this._forecastDaily : this._forecastHourly;
 
       return html`
         <ha-card @click="${this._handleMoreInfo}">
-          
+
           <!-- Header -->
           <div class="header">
             <div class="header-left">
@@ -195,7 +201,7 @@
               </div>`)
             : ""}
 
-          <!-- 智能简报（已替换为后端摘要） -->
+          <!-- 智能简报 -->
           <div class="briefing-box">
             <div class="brief-item">
               <ha-icon icon="mdi:clock-fast"></ha-icon>
@@ -247,6 +253,127 @@
         </ha-card>`;
     }
 
+    /* ============ detail mode (AQI + Sun/Moon) ============ */
+    _renderDetailMode() {
+      const a = this._weather.attributes;
+      const aqiVal = a.aqi?.aqi || "--";
+      const aqiCat = a.aqi?.aqi_category || (this._lang === "zh" || this._lang.startsWith("zh") ? "未知" : "Unknown");
+
+      return html`
+        <ha-card @click="${this._handleMoreInfo}">
+
+          <!-- Header -->
+          <div class="header">
+            <div class="header-left">
+              <div class="weather-icon-circle"><img src="${this._getIcon(a.qweather_icon)}"></div>
+              <div>
+                <div class="condition-state">${a.condition_cn||this._weather.state}</div>
+                <div class="city-name">${this.config.name||a.city||"QWeather"}</div>
+              </div>
+            </div>
+            <div class="header-right">
+              <div class="current-temp">${Math.round(a.temperature)}<span>°C</span></div>
+              <div class="update-time">${a.update_time?.split(" ")[1]||""} ${this._t("update")}</div>
+            </div>
+          </div>
+
+          <!-- 即时天气 6 项 -->
+          <div class="section-title">${this._t("instant_weather")}</div>
+          <div class="detail-grid-3x2">
+            ${this._renderAttr("mdi:thermometer", this._t("pressure"), `${a.pressure} hPa`)}
+            ${this._renderAttr("mdi:thermometer-plus", this._t("feels_like"), `${a.feels_like}°C`)}
+            ${this._renderAttr("mdi:compass", this._t("wind_dir"), a.wind_dir || "--")}
+            ${this._renderAttr("mdi:weather-windy", this._t("wind_scale"), `${a.wind_scale}${this._t("level")}`)}
+            ${this._renderAttr("mdi:water-percent", this._t("humidity"), `${a.humidity}%`)}
+            ${this._renderAttr("mdi:eye", this._t("visibility"), `${a.visibility} km`)}
+          </div>
+
+          <!-- 空气质量 8 项 -->
+          <div class="section-title">${this._t("aqi")}</div>
+          <div class="detail-grid-4x2">
+            ${this._renderAttr("mdi:air-filter", this._t("aqi"), aqiVal)}
+            ${this._renderAttr("mdi:alert-circle", this._t("aqi_cat"), aqiCat)}
+            ${this._renderAttr("mdi:blur", "PM2.5", stripUnit(a.aqi?.pollutants?.pm2p5) || "--")}
+            ${this._renderAttr("mdi:blur", "PM10", stripUnit(a.aqi?.pollutants?.pm10) || "--")}
+            ${this._renderAttr("mdi:chemical-weapon", "NO\u2082", stripUnit(a.aqi?.pollutants?.no2) || "--")}
+            ${this._renderAttr("mdi:chemical-weapon", "SO\u2082", stripUnit(a.aqi?.pollutants?.so2) || "--")}
+            ${this._renderAttr("mdi:weather-hazy", "O\u2083", stripUnit(a.aqi?.pollutants?.o3) || "--")}
+            ${this._renderAttr("mdi:molecule-co", "CO", stripUnit(a.aqi?.pollutants?.co) || "--")}
+          </div>
+
+          <!-- 日月信息 -->
+          <div class="section-title">${this._t("sun_moon")}</div>
+          <div class="detail-grid-4x1">
+            ${this._renderAttr("mdi:weather-sunset-up", this._t("sunrise"), a.sunrise || "--")}
+            ${this._renderAttr("mdi:weather-sunset-down", this._t("sunset"), a.sunset || "--")}
+            ${this._renderAttr("mdi:arrow-up-bold-circle-outline", this._t("moonrise"), a.moonrise || "--")}
+            ${this._renderAttr("mdi:arrow-down-bold-circle-outline", this._t("moonset"), a.moonset || "--")}
+          </div>
+
+          <div class="attribution">${a.attribution}</div>
+        </ha-card>`;
+    }
+
+    /* ============ lifeindex mode ============ */
+    _renderLifeIndexMode() {
+      const a = this._weather.attributes;
+      const lifeTypes = this.config.life_types || ["drsg", "uv", "cw", "sport"];
+      const lifeList = (a.suggestion || []).filter(i => lifeTypes.includes(i.type));
+
+      return html`
+        <ha-card @click="${this._handleMoreInfo}">
+
+          <!-- Header -->
+          <div class="header">
+            <div class="header-left">
+              <div class="weather-icon-circle"><img src="${this._getIcon(a.qweather_icon)}"></div>
+              <div>
+                <div class="condition-state">${a.condition_cn||this._weather.state}</div>
+                <div class="city-name">${this.config.name||a.city||"QWeather"}</div>
+              </div>
+            </div>
+            <div class="header-right">
+              <div class="current-temp">${Math.round(a.temperature)}<span>°C</span></div>
+              <div class="update-time">${a.update_time?.split(" ")[1]||""} ${this._t("update")}</div>
+            </div>
+          </div>
+
+          <!-- 生活指数 -->
+          <div class="section-title">${this._t("lifestyle_title")}</div>
+          ${!lifeList.length
+            ? html`<div class="no-data">${this._t("no_suggestions")}</div>`
+            : html`<div class="life-list">
+              ${lifeList.map(i => html`
+                <div class="life-item">
+                  <div class="life-header">
+                    <span class="life-title">${i.title}</span>
+                    <span class="life-brf">${i.brf}</span>
+                  </div>
+                  <div class="life-text">${i.txt}</div>
+                </div>
+              `)}
+            </div>`
+          }
+
+          <div class="attribution">${a.attribution}</div>
+        </ha-card>`;
+    }
+
+    /* ============ main render ============ */
+    render(){
+      if(!this._weather) return html`<ha-card class="loading">${this._t("loading")}</ha-card>`;
+
+      const mode = this.config.mode || "weather";
+      switch(mode) {
+        case "detail":
+          return this._renderDetailMode();
+        case "lifeindex":
+          return this._renderLifeIndexMode();
+        default:
+          return this._renderWeatherMode();
+      }
+    }
+
     _getWarningColor(lv){
       const c={"蓝色":"#2196f3","黄色":"#ffeb3b","橙色":"#ff9800","红色":"#f44336"};
       return c[lv]||"var(--error-color)";
@@ -281,11 +408,37 @@
         .brief-label{font-size:12px;color:var(--secondary-text-color);font-weight:bold;}
         .brief-value{font-size:13px;color:var(--primary-text-color);}
 
+        /* weather mode: 6 attr grid */
         .attributes-grid-3x2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;}
         .attr-item{display:flex;align-items:center;}
         .attr-item ha-icon{margin-right:14px;color:var(--secondary-text-color);--mdc-icon-size:20px;}
         .attr-label{font-size:11px;color:var(--secondary-text-color);}
         .attr-value{font-size:14px;font-weight:500;}
+
+        /* detail mode: styled attr grid */
+        .detail-grid-3x2{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+        .detail-grid-4x2{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+        .detail-grid-4x1{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+        .detail-grid-3x2 .attr-item,
+        .detail-grid-4x2 .attr-item,
+        .detail-grid-4x1 .attr-item{background:var(--secondary-background-color);padding:12px 14px;border-radius:12px;min-width:0;}
+        .detail-grid-3x2 .attr-item ha-icon,
+        .detail-grid-4x2 .attr-item ha-icon,
+        .detail-grid-4x1 .attr-item ha-icon{margin-right:12px;color:var(--primary-color);--mdc-icon-size:22px;}
+        .detail-grid-3x2 .attr-value,
+        .detail-grid-4x2 .attr-value,
+        .detail-grid-4x1 .attr-value{font-size:15px;font-weight:600;}
+
+        .section-title{font-size:15px;font-weight:bold;margin:18px 0 10px;border-left:4px solid var(--primary-color);padding-left:8px;}
+
+        /* life index */
+        .life-list{display:flex;flex-direction:column;gap:12px;}
+        .life-item{padding:12px;border-radius:10px;background:var(--secondary-background-color);}
+        .life-header{display:flex;justify-content:space-between;font-weight:bold;margin-bottom:6px;}
+        .life-title{font-size:14px;}
+        .life-brf{color:var(--primary-color);font-size:14px;}
+        .life-text{font-size:13px;color:var(--secondary-text-color);line-height:1.5;}
+        .no-data{text-align:center;opacity:.6;padding:10px;font-size:13px;}
 
         .tabs{display:flex;border-bottom:1px solid var(--divider-color);margin-bottom:16px;}
         .tab{padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--secondary-text-color);border-bottom:2px solid transparent;}
@@ -317,6 +470,6 @@
     type:"qweather-card",
     name:"QWeather Pro Card",
     preview:true,
-    description:"A compact weather card with 6 key metrics, bilingual support, and auto language detection."
+    description:"QWeather Pro weather card. Use mode: weather|detail|lifeindex"
   });
 })();
